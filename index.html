@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#121212">
+<title>Canto Quechua</title>
+<style>
+/* ===== VARIABLES ===== */
+:root{
+  --fondo:#121212; --panel:#1b1b1b; --linea:#2a2a2a;
+  --texto:#fff; --gris:#b3b3b3; --gris-2:#8a8a8a;
+  --durazno:#FFCBA4; --ambar:#F8B878; --naranja:#FF9933; --lima:#B2EC5D; --lima-2:#BADA55;
+  --fuente:"Inter","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--fondo);color:var(--texto);font:16px/1.4 var(--fuente)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+[hidden]{display:none!important}
+
+/* ===== MARCO: pantalla completa en 3 zonas ===== */
+#app{width:100vw;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+
+/* A. Barra superior compacta */
+#barra{flex:none;height:48px;display:flex;align-items:center;gap:6px;padding:0 6px;
+  padding-top:env(safe-area-inset-top);box-sizing:content-box;background:var(--fondo);border-bottom:1px solid var(--linea)}
+.ico{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--gris)}
+.ico:hover,.ico:focus-visible{color:var(--texto);background:#ffffff14;outline:none}
+.ico svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#titulos{flex:1;min-width:0;padding-left:8px;line-height:1.15}
+#titulos.con-volver{padding-left:0}
+.marca{display:block;font-size:.62rem;font-weight:800;letter-spacing:.18em;color:var(--naranja)}
+#tituloActual{display:block;font-size:.95rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tituloActual i{font-style:normal;font-weight:400;color:var(--gris);margin-left:.5em}
+#buscador{flex:1;min-width:0;height:34px;padding:0 14px;border-radius:17px;border:0;outline:0;
+  background:#2a2a2a;color:var(--texto);font:inherit;font-size:.95rem}
+#buscador:focus{box-shadow:0 0 0 2px var(--lima-2)}
+#barra .x{display:none}
+#barra.buscando .x{display:block}
+#barra.buscando .lupa{display:none}
+
+/* B. Área central */
+#centro{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#444 transparent}
+
+/* Listado */
+#lista{list-style:none}
+.fila{display:flex;align-items:center;gap:14px;width:100%;padding:10px 16px;text-align:left}
+.fila:hover,.fila:focus-visible{background:#ffffff0d;outline:none}
+.fila .n{flex:none;width:26px;text-align:center;font-size:.9rem;color:var(--gris-2);font-variant-numeric:tabular-nums}
+.fila .t{flex:1;min-width:0}
+.fila .qu{display:block;font-size:1.02rem;font-weight:700;overflow-wrap:anywhere}
+.fila .es{display:block;font-size:.82rem;color:var(--gris);overflow-wrap:anywhere}
+.fila .gen{flex:none;font-size:.75rem;color:var(--gris-2);max-width:30%;text-align:right}
+.fila.activa{background:#ffffff14}
+.fila.activa .qu{color:var(--lima)}
+.fila.activa .n{color:var(--lima)}
+.fila.activa .n svg{width:14px;height:14px;fill:var(--lima)}
+.vacio{padding:40px 16px;text-align:center;color:var(--gris)}
+@media(max-width:520px){.fila .gen{display:none}}
+
+/* Lectura */
+#lectura{width:100%;max-width:1100px;margin:0 auto;padding:14px clamp(16px,5vw,56px) 28px;text-align:center}
+.meta{font-size:.78rem;color:var(--gris-2);margin-bottom:6px}
+.rotulo{display:block;margin:18px 0 10px;font-size:.68rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase}
+.rotulo.qu{color:var(--naranja)} .rotulo.es{color:var(--lima-2)}
+.estrofa{margin-bottom:1.3em}
+.verso{display:block}
+/* Quechua: grande, grueso, tono durazno / Español: menor, fino, gris claro */
+.qu-txt .verso{font-size:clamp(1.35rem,1rem + 1.7vw,2.25rem);font-weight:700;line-height:1.35;color:var(--durazno)}
+.es-txt .verso{font-size:clamp(1.05rem,.85rem + 1vw,1.55rem);font-weight:400;line-height:1.45;color:#cfcfcf}
+.separador{height:1px;background:var(--linea);margin:26px auto 0;max-width:240px}
+
+/* C. Barra inferior: reproductor compacto */
+#pie{flex:none;background:var(--panel);border-top:1px solid var(--linea);padding-bottom:env(safe-area-inset-bottom)}
+#progreso{display:block;width:100%;height:16px;margin:0;padding:0;background:transparent;-webkit-appearance:none;appearance:none;cursor:pointer;--p:0%}
+#progreso:disabled{cursor:default;opacity:.35}
+#progreso::-webkit-slider-runnable-track{height:3px;background:linear-gradient(to right,var(--lima-2) var(--p),var(--linea) var(--p))}
+#progreso::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;margin-top:-4.5px;border-radius:50%;background:var(--lima-2);border:0}
+#progreso::-moz-range-track{height:3px;background:var(--linea)}
+#progreso::-moz-range-progress{height:3px;background:var(--lima-2)}
+#progreso::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--lima-2);border:0}
+#controles{height:52px;display:flex;align-items:center;gap:10px;padding:0 14px}
+.info{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+#pistaTitulo{font-size:.85rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pistaEstado{font-size:.72rem;color:var(--gris);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pistaEstado a{color:var(--lima-2)}
+.grupo{display:flex;align-items:center;gap:10px}
+.circ{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:var(--texto);border:1px solid #3a3a3a}
+.circ svg{width:16px;height:16px;fill:currentColor}
+.circ:hover:not(:disabled){border-color:var(--ambar)}
+.circ.pri{width:42px;height:42px;background:var(--naranja);border-color:var(--naranja);color:#1a1008}
+.circ.pri:hover:not(:disabled){background:var(--ambar)}
+.circ:disabled{opacity:.3;cursor:default}
+.circ:focus-visible,#buscador:focus-visible{outline:2px solid var(--lima-2);outline-offset:2px}
+#btnPlay .pausa{display:none}
+#btnPlay.sonando .pausa{display:block}
+#btnPlay.sonando .play{display:none}
+.aviso{margin:40px auto;max-width:34em;color:var(--gris);font-size:1.05rem}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- A. Barra superior -->
+  <header id="barra">
+    <button class="ico" id="btnVolver" type="button" aria-label="Volver al listado" hidden>
+      <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div id="titulos"><span class="marca">CANTO QUECHUA</span><span id="tituloActual"></span></div>
+    <input id="buscador" type="search" placeholder="Buscar por título (quechua o español)" aria-label="Buscar canción" hidden>
+    <button class="ico" id="btnBuscar" type="button" aria-label="Buscar">
+      <svg class="lupa" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/></svg>
+      <svg class="x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </header>
+
+  <!-- B. Área central: listado o lectura -->
+  <main id="centro">
+    <ul id="lista"></ul>
+    <article id="lectura" hidden></article>
+  </main>
+
+  <!-- C. Reproductor (barra inferior) -->
+  <footer id="pie" hidden>
+    <input id="progreso" type="range" min="0" max="1000" value="0" aria-label="Posición de la pista" disabled>
+    <div id="controles">
+      <div class="info"><span id="pistaTitulo"></span><span id="pistaEstado"></span></div>
+      <div class="grupo">
+        <button class="circ" id="btnAnterior" type="button" aria-label="Pista anterior">
+          <svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9.5 12z"/></svg></button>
+        <button class="circ pri" id="btnPlay" type="button" aria-label="Reproducir o pausar" disabled>
+          <svg class="play" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></svg>
+          <svg class="pausa" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg></button>
+        <button class="circ" id="btnSiguiente" type="button" aria-label="Pista siguiente">
+          <svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l10.5-7z"/></svg></button>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<!-- =====================================================================
+     REPERTORIO. Cada canción es un objeto:
+       tituloQuechua, tituloEspanol, genero, procedencia,
+       creditos: [ "Recopilación: …", "Intérprete: …" ]   (puede ir vacío),
+       pista: enlace de Google Drive de la pista (archivo compartido con «cualquier persona con el enlace»),
+       estrofas: { quechua: [ [verso, verso…], … ], espanol: [ [verso, verso…], … ] }
+     Cada estrofa es un arreglo de versos (en el mismo orden del documento fuente).
+     Si una canción aún no tiene letra, use estrofas: { quechua: [], espanol: [] }.
+     ===================================================================== -->
+<script>
+const CANCIONERO = [
+  {
+    tituloQuechua: "LOROCHAY",
+    tituloEspanol: "MI LORITO",
+    genero: "Carnaval",
+    procedencia: "Querobamba, provincia de Lucanas, Ayacucho",
+    creditos: ["Recopilación: José María Arguedas", "Intérprete invitada: Dolly Príncipe B."],
+    pista: "https://drive.google.com/file/d/1NI_qw2D3tTS0MXFxyNyAOwhjNa31sW85",
+    estrofas: {
+      quechua: [
+        ["Chiyarallaway mayup patanpi", "cartamuwan nispa", "Chiyarallaway mayup patanpi", "cartamuwan nispa."],
+        ["Ciertochum, ciertochum", "cartamuwarqanki", "ciertochum, ciertochum", "cartamuwarqanki."],
+        ["Lorochay, lorocha", "lorochay, lorochay,", "lorochay, loro..."]
+      ],
+      espanol: [
+        ["A orillas del río Chiara (esperé)", "pensando que me escribirías", "aguardé en la ribera del río Chiara", "que tu carta llegara."],
+        ["¿Es verdad?, ¿de veras", "me enviaste una carta?", "dime: ¿es cierto", "que escribiste una carta para mí?"],
+        ["Lorito mío, mi lorito,", "lorito mío, mi lorito,", "lorito mío, loro."]
+      ]
+    }
+  },
+  {
+    tituloQuechua: "UNCHUCHUKUCHAY",
+    tituloEspanol: "COMADREJITA",
+    genero: "Wayno",
+    procedencia: "Barrio de Chaupi, Puquio, Lucanas, Ayacucho",
+    creditos: ["Recopilación: José María Arguedas"],
+    pista: "https://drive.google.com/file/d/17JfO2rVf-MQEOTI88DsjTHDITvx0CDC1",
+    estrofas: {
+      quechua: [
+        ["Unchuchukuchay, unchuchukuchay", "chukuchallayki prestaykuway,", "chukuchaykiwan, chukuykukuspay", "kunan tutalla purirukusaq", "kunan tutalla paseayrukusaq."],
+        ["Killiwarachay, killiwarachay", "warachallayki pristaykuway", "warachaykiwan waraykukuspay", "kunan tutalla purirukusaq", "kunan tutalla paseayrukusaq."],
+        ["Esquina tiendapi tiyaq niñachay", "traguchallayki pristaykuway", "traguchaykiwan traguykukuspay", "kunan tutalla purirukusaq", "kunan tutalla paseayrukusaq."]
+      ],
+      espanol: [
+        ["Comadrejita, mi comadreja", "préstame tu gorrito", "para ponérmelo y lucirlo", "caminando esta nochecita", "paseándome hoy de noche."],
+        ["Cernicalito, hermoso cernícalo", "préstame tu pantaloncito", "para ponérmelo y lucirlo", "caminando esta nochecita", "paseo nocturno de hoy."],
+        ["Niñita de la esquina tienda", "fíame tu traguito", "para animarme y animar", "solo por esta nochecita", "pasearme esta noche nomás."]
+      ]
+    }
+  },
+  {
+    tituloQuechua: "SANTU QARQUY",
+    tituloEspanol: "PARA EXPULSAR AL SANTO",
+    genero: "Costumbrista",
+    procedencia: "San Jerónimo, Andahuaylas, Apurímac",
+    creditos: ["Recopilación: Isaac Vivanco Tarco"],
+    pista: "https://drive.google.com/file/d/15OOGXh6ohWVdPfKEFBZgYdsHlzIgAlwr",
+    estrofas: {
+      quechua: [
+        ["Chisinpaykuychallay chaykay lucerucha", "maypitaq qanwan kuska achikyaykurqanchik", "achikyaykurqanchik."],
+        ["Cuatrochallay, cuatro, cincochallay sinco", "may lado tiendapiraq sencillachisqayki", "sencillachisqayki."],
+        ["Chinchir botellapi chuspicha uywasqay", "ñuqa wañukuptin imaynaraq kanki", "haykaynaraq kanki."],
+        ["Leonchallay león atuqchallay, atuq", "imayna modopitaq simiykiri yawar", "simiykiri yawar."],
+        ["Negakuy negakuy aman negakuychu", "chayqaya simiykipas yawarllaña kashkan", "yawarllaña kashkan."],
+        ["Qamsi mikusqanki piara mulachayta", "qamsi mikusqanki silla caballoyta", "silla caballoyta."],
+        ["Waychuchallay waychu, waychu caballochay", "ñuqalla montaykuptiy allintam pawanki", "allintam pawanki."],
+        ["Caballito bayo, monturaykuraykim", "ñuqa montaykuptiy allintam pawanki", "allintam soltanki."],
+        ["Mana allinchata saltaykuptiykiqa", "wischusqay yanaysi asipayawanqa", "asipayawanqa."],
+        ["Uywalla pampaypipas achikiyaqsi kani", "Chaychu mana kuna achikyarquymanchu"],
+        ["San Jecho plazapi", "San Jecho plazapi", "Pukacha plazapi", "Puquiulla plazapi", "Coracora plazapi."]
+      ],
+      espanol: [
+        ["Lucerito del amanecer", "¿Cuándo hemos amanecido juntos?"],
+        ["Mis cuatro y cinco solcitos,", "¿en qué tienda te cambiaré por sencillo?"],
+        ["Cantárida que crío en botella verde,", "¿qué será de ti cuando yo muera?"],
+        ["Pumita, zorrito,", "¿cómo así tu hocico está sangriento?"],
+        ["Niégalo, niégalo, no lo niegues más,", "es visible tu hocico ensangrentado."],
+        ["Tú devoraste mi piara de mulas,", "tú te tragaste mi caballo de montar."],
+        ["Mi caballito pardo, color del ruiseñor", "has de correr bien cuando te cabalgue."],
+        ["Caballito de color dorado te he ensillado", "cuando yo cabalgue sobre ti has de correr bien", "cuando yo te monte debes saltar muy alto."],
+        ["Pues, si no saltaras bien", "la mujer que abandone se burlaría de mí."],
+        ["Si soy capaz de amanecerme en la intemperie", "¿cómo no he de poder pernoctar", "hoy en la plaza de San Jerónimo?", "En la plaza de Pakucha,", "En la plaza de Puquio,", "En la plaza de Coracora."]
+      ]
+    }
+  },
+  {
+    tituloQuechua: "PATAYKIMANTA",
+    tituloEspanol: "DESDE ARRIBA",
+    genero: "Costumbrista",
+    procedencia: "Saca del toro bravo de Coracora, Parinacochas, Ayacucho",
+    creditos: ["Recopilación: José María Arguedas"],
+    pista: "https://drive.google.com/file/d/1Dqu0sIfZuWhO0QAq7eloKrmhgbYvlaz6",
+    estrofas: {
+      quechua: [
+        ["Pataykimanta qawaykamuptiy", "cristal vasopi aguadasqanki", "qura chawpipi majadas qanki", "chayllamantaqa puririykachimuykim."],
+        ["Torollaysi escaparun", "torollaysi faltan ánimo", "torollaysi zafarun", "toro faltan ánimo", "caballochaypas lerdotaq", "espuelochaypas lunqutaq", "zurriagochaypas huchuychallam."],
+        ["Torochaysi wañurqun", "Coracora llaqtapi", "torerochaman wañuchiykachinki", "torochallay wañuquptin", "plaza nueva llaptapi", "Coracora llaqtapi."]
+      ],
+      espanol: [
+        ["Al divisarte desde las alturas", "te vi abrevando en un vaso de cristal", "y apacentando es un herbazal", "y desde allí yo te traje hasta aquí."],
+        ["Mi toro se ha fugado", "mi toro está desanimado", "se ha zafado un toro mío", "falta ánimo a mi toro.", "mi caballo está lerdo", "y mis espuelas estás sin punta", "y mi zurriago es cortito."],
+        ["Mi toro ha muerto", "en el pueblo de Coracora", "hazle ver al torerito", "que mató a mi toro", "en la plaza nueva", "de la ciudad de Coracora."]
+      ]
+    }
+  },
+  {
+    tituloQuechua: "AMAPOLAY",
+    tituloEspanol: "AMAPOLA",
+    genero: "Wayno",
+    procedencia: "por determinar",
+    creditos: ["Recopilación: José María Arguedas"],
+    pista: "https://drive.google.com/file/d/14naPc-RasS1vEXtj61QKgM75v0Ea7T2v",
+    estrofas: {
+      quechua: [
+        ["Amapolay, amapola", "amapuni ñuqawanqa", "chirim kani, chiriykiman", "wayram kani wayraykiman", "wayram kani wayraykiman."],
+        ["Amapolatas, plantani", "congona sunquchayuqta", "cariñochatas tarini", "manaña remedioyuqta", "manaña remedioyuqta."],
+        ["Amapolay, amapola", "amapuni ñuqawanqa", "chirim kani, chiriykiman", "wayram kani wayraykiman", "wayram kani wayraykiman."],
+        ["Amapolata, plantani", "congona sunquchayuqta", "kuyaychallatas tarini", "manaña remedioyuqta", "manaña remedioyuqta."]
+      ],
+      espanol: [
+        ["Amapola mía, amapola", "conmigo no, de ningún modo", "frío soy, puedo enfriarte", "viento soy, te ventearía."],
+        ["Sembré una amapola", "con alma de congona", "encuentro un cariñito", "que ya no tiene remedio", "hallo a quien me ame", "sin remedio alguno."]
+      ]
+    }
+  },
+  {
+    tituloQuechua: "MAMALLAY",
+    tituloEspanol: "MADRE MÍA",
+    genero: "Yaraví",
+    procedencia: "por determinar",
+    creditos: ["Dominio popular", "Intérprete invitada: Dolly Príncipe B."],
+    pista: "https://drive.google.com/file/d/1YDfsfWfbyZ_evpCOacuy3Q7vV1hsa2pp",
+    estrofas: {
+      quechua: [
+        ["Llapallan wawayllaytam", "kuyaspay uywarqani", "llapallan wawayllaytam", "kuyaspay uywarqani."],
+        ["Punchawlla kanchariptin", "purullan huntaykuptin", "llapallan pawariku."],
+        ["Punchawlla kanchariptin", "purullan huntaykuptin", "llapallan pawariku."],
+        ["Wayraman qaparini", "kutimuy waway nispay", "wayraman qaparini", "kutimuy waway nispay."],
+        ["Mayñache waqallasqay", "intipas chinkaykunñam", "kayqaya tukuykuni."]
+      ],
+      espanol: [
+        ["A todos mis hijos", "los crie con amor", "con la luz de la aurora", "y completando su plumaje", "todos levantaron vuelo."],
+        ["Clamo a los vientos, diciendo:", "“¡Vuelve, hijo mío!”.", "Cuánto he llorado ya", "el sol ya se pierde en el ocaso", "y mi vida languidece."]
+      ]
+    }
+  },
+  {
+    tituloQuechua: "TUTA WAYRA",
+    tituloEspanol: "VIENTO NOCTURNO",
+    genero: "Costumbrista",
+    procedencia: "por determinar",
+    creditos: ["Recopilación: José María Arguedas"],
+    pista: "https://drive.google.com/file/d/11ecGywYcEc6vyYmA4qjNh0Xcc3-MhV7J",
+    estrofas: {
+      quechua: [
+        ["Tuta wayray, tuta wayra", "amam tuta purinkichu", "tutan tutan puriptiykis", "runap simin chayasunki", "runap simin chayasunki."],
+        ["Piña turus qipaykipi", "pukacha clavel wayta", "imaykiwanmi defiendekunki", "pukacha clavel wayta", "pukacha clavel wayta."],
+        ["Ñuqanmi eso si defiendeykiman", "pukacha clavel wayta", "cinturachaypi revolverchaywan", "pukacha clavel wayta", "pukacha clavel wayta."]
+      ],
+      espanol: [
+        ["Viento nochero, ventarrón noctámbulo", "No trajines de noche", "Tu ambular noctívago", "Provocará maledicencias contra ti."],
+        ["Un toro bravo te persigue", "florecilla de clavel rojo", "¿Con qué te defenderás", "mi clavelina encendida?"],
+        ["Yo sí te defendería", "mi clavelina colorada", "con mi revólver al cinto", "mi florecilla de clavel rojo."]
+      ]
+    }
+  },
+  {
+    tituloQuechua: "TODAS LAS SANGRES",
+    tituloEspanol: "",
+    genero: "Wayno",
+    procedencia: "por determinar",
+    creditos: ["Julio Humala Lema"],
+    pista: "https://drive.google.com/file/d/1_f1-36M-N6tTmDDGlOsuVkuTShvrJu2D",
+    estrofas: {
+      quechua: [],
+      espanol: []
+    }
+  },
+  {
+    tituloQuechua: "WASICHAKUY",
+    tituloEspanol: "TECHADO DE CASA",
+    genero: "Costumbrista",
+    procedencia: "Techado de casa en Coracora, Parinacochas, Ayacucho",
+    creditos: ["Recopilación: Lizandro «Chano» Ludeña"],
+    pista: "https://drive.google.com/file/d/1VWjPMlEz4yKq0SIw-6JunWimXbYAH6mg",
+    estrofas: {
+      quechua: [
+        ["Pitaq mamallay, pitaq taytallay", "nispataq nichkanki", "kayqaya mamayki, kayqaya taytayki", "qawaykukuyña (riqsiykukuyña)."],
+        ["Qawaykukuyña, riqsiykukuyña", "wasillaykita (sombrallaykita)", "cementuchanwan adobechanwan", "qispichisqaykita."],
+        ["Qawaykukuyña, riqsiykukuyña", "wasillaykita (sombrallaykita)", "paysi yachanqa, paysi musyanqa", "rurasqaykita."],
+        ["Ay wasi, wasi, ischu wasillay", "ay cinta, cinta, cintay labrada."],
+        ["Kayqa wasiyki, kayqaya sombrayki", "kuyay compadre (comadre)", "tuta punchawlla rurakusqayki", "kuyay comadre (compadre)."],
+        ["Ay, wasi wasi, ischu wasillay", "ay, cinta, cinta, cintay labrada."],
+        ["Allinchatachu pirqaykurqanki", "kuyay maestrollay", "allinchatachu takaykurqanki", "waylluy maestrollay", "fiero parataq chayaykamuspa", "siqaykachunman", "agosto wayrataq chayaykamuspa", "chinkaykachinman."]
+      ],
+      espanol: [
+        ["Aquí está tu casa, he aquí tu sombra", "querido compadre, querida comadre", "lo trabajaste de día y de noche", "querido compadre, querida comadre."],
+        ["Oh, casa, casita, mi casita de paja", "Oh, cinta, cinta, mi cinta labrada."],
+        ["¿Has hecho paredes fuertes", "mi querido maestro?", "¿Es firme su estructura", "maestro digno de mi cariño?"],
+        ["No vaya a ser que la lluvia torrencial", "lo arrastre todo", "no sea que el ventarrón de agosto", "lo haga desaparecer."],
+        ["¿Quiénes son mi madre y mi padre?", "así andas preguntando.", "He aquí tu madre y tu padre", "contémplalos, reconócelos."],
+        ["Igualmente, mira y reconoce", "tu hogar, tu protección", "construido y acabada por ti", "con adobe y cemento."],
+        ["Contempla y reconoce", "tu casa, tu hogareña sombra", "ella sabe y se da cuenta", "que tú la edificaste."],
+        ["Ay, casa, mi casita techada con paja.", "Ay, cinta, mi cintita labrada."]
+      ]
+    }
+  },
+  {
+    tituloQuechua: "QARAWI DE SIEMBRA DE PAPA",
+    tituloEspanol: "Canción ritual de la siembra de papa",
+    genero: "Harawi",
+    procedencia: "Pampachiri, Andahuaylas, Apurímac",
+    creditos: ["Recopilación: Isaac Vivanco Tarco", "Intérprete invitada: Zuly Azurín"],
+    pista: "https://drive.google.com/file/d/1N4Ylmzz8vJ2L3YkG-PV3pfEQhTMyDWxI",
+    estrofas: {
+      quechua: [
+        ["Mamay aaay, way yurallay", "mamay panti sisallay", "wachaypas amapas", "sumaq papa", "churasqay hawaqa", "sumaq papa."],
+        ["Puytuy, puytuy, sumaq papa", "wachaypas amapas", "sumaq papa", "churasqay hawaqa", "sumaq papa", "ay way sumaq papa."],
+        ["Achkatam wachanki", "sumaq papa", "churasqay hawaqa", "sumaq papa", "wachaypas amapas", "sumaq papa."]
+      ],
+      espanol: [
+        ["Madre mía, ay, way, mi planta", "madre, mía de flor rosada", "no importa si fructificas o no", "hermosa papa", "luego de que ya te sembré", "mi linda papita."],
+        ["Papa grande y hermosa cual vasija", "no importa si das fruto o no", "hermosa papa", "una vez que ya te he sembrado", "hermosa papa", "ay way, linda papita."],
+        ["Tu fruto se multiplicará", "Hermosa papa", "una vez que te he sembrado", "bella papa", "no importa si produces o no", "mi linda papa."]
+      ]
+    }
+  },
+  {
+    tituloQuechua: "ARVERJAS SARUY",
+    tituloEspanol: "TRILLA DE ARVEJAS",
+    genero: "Qachwa costumbrista",
+    procedencia: "Pampas, Tayacaja, Huancavelica",
+    creditos: ["Recopilación: José María Arguedas"],
+    pista: "https://drive.google.com/file/d/1sjmUrEo7RUTsJanN4WzM6BD_X3nCAPYp",
+    estrofas: {
+      quechua: [
+        ["Taqllaykuy, taqllaykuy", "makichaykiwan taqllaykuy.", "saruykuy saruykuy", "chakichaykiwan saruykuy.", "makichaykiwan chakichaykiwan", "taqllaykuy saruykuy."],
+        ["Correopis cartay kachkan", "correopis cartay kachkan", "qawaylla qawaykuyman", "likaylla likaykuyman", "qawaylla qawaykuyman", "likaylla likaykuyman."]
+      ],
+      espanol: [
+        ["Palméala, dale palmaditas", "con tus manitas palméala", "písala, pisa suavemente", "con tus piececitos písala", "con tus manitas y tus piececitos", "palméala y písala suavemente."],
+        ["Dicen que en el correo tengo una carta", "una carta dicen que tengo en el correo", "¡Cómo pudiera verla siquiera!", "¡Si solo pudiera leerla!"],
+        ["Si solo pudiera verla", "si pudiera leerla", "si la viera nomás", "oh, si la pudiese leer."]
+      ]
+    }
+  },
+  {
+    tituloQuechua: "A NUESTRO PADRE CREADOR TÚPAC AMARU (fragmento)",
+    tituloEspanol: "",
+    genero: "Himno Canción",
+    procedencia: "por determinar",
+    creditos: ["José María Arguedas", "Intérprete invitado: Ricardo Elías Roselló"],
+    pista: "https://drive.google.com/file/d/1DAs9DGmttUqluOkBjtote9fsMriHILuJ",
+    estrofas: {
+      quechua: [],
+      espanol: []
+    }
+  }
+];
+</script>
+
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const barra = $("barra"), centro = $("centro"), lista = $("lista"), lectura = $("lectura");
+  const buscador = $("buscador"), titulos = $("titulos"), pie = $("pie");
+  const total = CANCIONERO.length;
+  let actual = -1, filtro = "";
+
+  const norm = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+  const fmt = (s) => isFinite(s) ? Math.floor(s / 60) + ":" + String(Math.floor(s % 60)).padStart(2, "0") : "0:00";
+
+  /* =====================  REPRODUCTOR DE PISTAS  ===================== */
+  const pista = new Audio();
+  pista.preload = "metadata";
+  const fallo = {};                      // pistas que Drive no entregó (se puede reintentar con ▶)
+  let cargado = -1, arrastrando = false; // índice de la pista cargada
+  // Identificador del archivo en el enlace de Drive (…/d/ID/… o …?id=ID)
+  const idDrive = (u) => { const m = (u || "").match(/\/d\/([\w-]+)|[?&]id=([\w-]+)/); return m ? (m[1] || m[2]) : ""; };
+  // Dirección de reproducción directa de Drive (el archivo debe estar compartido con «cualquier persona con el enlace»)
+  const fuente = (i) => { const id = idDrive(CANCIONERO[i].pista); return id && !fallo[i] ? "https://docs.google.com/uc?export=download&id=" + id : ""; };
+  const tocar = () => { const p = pista.play(); if (p && p.catch) p.catch(() => {}); };
+
+  function cargarPista(i, reproducir) {
+    cargado = i; delete fallo[i]; pista.pause();   // cada vez se intenta primero la reproducción directa
+    const src = fuente(i);
+    if (src) { pista.src = src; if (reproducir) tocar(); }
+    else { pista.removeAttribute("src"); pista.load(); }
+    if ("mediaSession" in navigator && window.MediaMetadata)       // notificación y pantalla de bloqueo
+      navigator.mediaSession.metadata = new MediaMetadata({ title: CANCIONERO[i].tituloQuechua, artist: "Canto Quechua", album: CANCIONERO[i].tituloEspanol || "Canto Quechua" });
+    estado();
+  }
+  // Sincroniza botones, barra de posición, tiempos y visibilidad del reproductor
+  function estado() {
+    const c = cargado >= 0 ? CANCIONERO[cargado] : null, hay = !!c && !!fuente(cargado), p = $("progreso");
+    $("btnPlay").disabled = !c || !idDrive(c.pista); p.disabled = !hay;
+    $("btnPlay").classList.toggle("sonando", hay && !pista.paused);
+    $("btnAnterior").disabled = cargado <= 0;
+    $("btnSiguiente").disabled = cargado < 0 || cargado >= total - 1;
+    $("pistaTitulo").textContent = c ? c.tituloQuechua : "";
+    const e = $("pistaEstado"); e.textContent = "";
+    if (c && hay) e.textContent = fmt(pista.currentTime || 0) + " / " + fmt(pista.duration) + "  ·  " + (cargado + 1) + " de " + total;
+    else if (c && idDrive(c.pista)) {      // Drive no entregó la pista: aviso breve, sin visor
+      e.textContent = "Drive no respondió · ";
+      const a = el("a", "", "Abrir en Drive ↗"); a.href = c.pista; a.target = "_blank"; a.rel = "noopener noreferrer"; e.append(a);
+    } else if (c) e.textContent = "Sin pista asignada";
+    const d = pista.duration, t = pista.currentTime || 0;
+    if (!arrastrando) { const v = hay && d ? t / d * 1000 : 0; p.value = v; p.style.setProperty("--p", v / 10 + "%"); }
+    if ("mediaSession" in navigator) navigator.mediaSession.playbackState = pista.paused ? "paused" : "playing";
+    pie.hidden = cargado < 0 || (lectura.hidden && pista.paused);   // en el listado solo si está sonando
+  }
+  function alternar() {
+    if ($("btnPlay").disabled) return;
+    if (fallo[cargado]) cargarPista(cargado, true);      // reintenta la descarga directa
+    else pista.paused ? tocar() : pista.pause();
+  }
+  // Cambia de pista desde el reproductor, esté la vista que esté
+  function ir(i, reproducir) {
+    if (i < 0 || i >= total) return;
+    if (!lectura.hidden) abrir(i, false, reproducir);
+    else { actual = i; cargarPista(i, reproducir); pintarLista(); }
+  }
+
+  ["timeupdate", "loadedmetadata", "durationchange", "play", "pause", "emptied"].forEach((e) => pista.addEventListener(e, estado));
+  pista.addEventListener("ended", () => { if (cargado < total - 1) ir(cargado + 1, true); else estado(); });   // pasa a la siguiente
+  pista.addEventListener("error", () => {
+    if (!pista.getAttribute("src")) return;
+    fallo[cargado] = true;               // Drive no entregó la pista
+    estado();
+  });
+  const prog = $("progreso");
+  prog.addEventListener("pointerdown", () => { arrastrando = true; });
+  ["pointerup", "pointercancel", "change"].forEach((e) => prog.addEventListener(e, () => { arrastrando = false; }));
+  prog.addEventListener("input", () => {
+    if (isFinite(pista.duration)) pista.currentTime = prog.value / 1000 * pista.duration;
+    prog.style.setProperty("--p", prog.value / 10 + "%");
+  });
+  if ("mediaSession" in navigator) {     // controles de la pantalla de bloqueo y reproducción en segundo plano
+    const m = (a, f) => { try { navigator.mediaSession.setActionHandler(a, f); } catch (e) {} };
+    m("play", tocar); m("pause", () => pista.pause());
+    m("previoustrack", () => ir(cargado - 1, true)); m("nexttrack", () => ir(cargado + 1, true));
+    m("seekto", (d) => { if (d.seekTime != null) pista.currentTime = d.seekTime; });
+  }
+
+  /* =====================  LISTADO Y LECTURA  ===================== */
+  function ponerTitulo(qu, es) {
+    const t = $("tituloActual"); t.textContent = qu;
+    if (es) t.appendChild(el("i", "", es));
+  }
+  function pintarLista() {
+    lista.textContent = "";
+    const q = norm(filtro);
+    CANCIONERO.forEach((c, i) => {
+      if (q && !norm(c.tituloQuechua + " " + c.tituloEspanol).includes(q)) return;
+      const li = el("li"), b = el("button", "fila" + (i === actual ? " activa" : ""));
+      b.type = "button";
+      const n = el("span", "n");
+      if (i === actual) n.innerHTML = '<svg viewBox="0 0 16 16"><rect x="1" y="6" width="3" height="9"/><rect x="6.5" y="1" width="3" height="14"/><rect x="12" y="9" width="3" height="6"/></svg>';
+      else n.textContent = i + 1;
+      const t = el("span", "t");
+      t.append(el("span", "qu", c.tituloQuechua), el("span", "es", c.tituloEspanol));
+      b.append(n, t, el("span", "gen", c.genero));
+      b.addEventListener("click", () => abrir(i));
+      li.appendChild(b); lista.appendChild(li);
+    });
+    if (!lista.children.length) lista.appendChild(el("li", "vacio", "Sin resultados"));
+  }
+  function bloque(cls, rotulo, estrofas) {
+    const s = el("section", cls + "-txt");
+    s.appendChild(el("span", "rotulo " + cls, rotulo));
+    estrofas.forEach((versos) => {
+      const p = el("p", "estrofa");
+      versos.forEach((v) => p.appendChild(el("span", "verso", v)));
+      s.appendChild(p);
+    });
+    return s;
+  }
+  function pintarLectura(c) {
+    lectura.textContent = "";
+    lectura.appendChild(el("div", "meta", "Género: " + c.genero + "  ·  Procedencia: " + c.procedencia));
+    c.creditos.forEach((t) => lectura.appendChild(el("div", "meta", t)));
+    const qu = c.estrofas.quechua, es = c.estrofas.espanol;
+    if (!qu.length && !es.length) lectura.appendChild(el("p", "aviso", "Letra: por determinar. Puede escuchar la pista con el botón ▶."));
+    if (qu.length) lectura.appendChild(bloque("qu", "Quechua", qu));
+    if (qu.length && es.length) lectura.appendChild(el("div", "separador"));
+    if (es.length) lectura.appendChild(bloque("es", "Español · " + c.tituloEspanol, es));
+  }
+  function abrir(i, desdeHash, reproducir) {
+    if (i < 0 || i >= total) return mostrarLista();
+    actual = i; cerrarBusqueda();
+    const c = CANCIONERO[i];
+    pintarLectura(c); ponerTitulo(c.tituloQuechua, c.tituloEspanol);
+    $("btnVolver").hidden = false; titulos.classList.add("con-volver");
+    lista.hidden = true; lectura.hidden = false;
+    centro.scrollTop = 0;
+    if (i !== cargado) cargarPista(i, reproducir || !pista.paused);   // si sonaba otra, continúa sonando
+    else { if (reproducir) tocar(); estado(); }
+    if (!desdeHash) location.hash = "cancion-" + (i + 1);
+  }
+  function mostrarLista() {
+    lectura.hidden = true; lista.hidden = false;
+    $("btnVolver").hidden = true; titulos.classList.remove("con-volver");
+    ponerTitulo("Repertorio · " + total + " canciones");
+    pintarLista(); estado();
+    const a = lista.querySelector(".activa"); if (a) a.scrollIntoView({ block: "center" });
+  }
+  function volver() { mostrarLista(); if (location.hash) location.hash = ""; }   // la pista sigue sonando
+
+  /* ---------- Búsqueda ---------- */
+  function abrirBusqueda() {
+    if (!lectura.hidden) volver();
+    barra.classList.add("buscando"); titulos.hidden = true; buscador.hidden = false; buscador.focus();
+  }
+  function cerrarBusqueda() {
+    barra.classList.remove("buscando"); buscador.hidden = true; titulos.hidden = false;
+    buscador.value = ""; if (filtro) { filtro = ""; pintarLista(); }
+  }
+  $("btnBuscar").addEventListener("click", () => barra.classList.contains("buscando") ? cerrarBusqueda() : abrirBusqueda());
+  buscador.addEventListener("input", () => { filtro = buscador.value; pintarLista(); });
+
+  /* ---------- Eventos ---------- */
+  $("btnVolver").addEventListener("click", volver);
+  $("btnPlay").addEventListener("click", alternar);
+  $("btnAnterior").addEventListener("click", () => ir(cargado - 1, !pista.paused));
+  $("btnSiguiente").addEventListener("click", () => ir(cargado + 1, !pista.paused));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { barra.classList.contains("buscando") ? cerrarBusqueda() : (!lectura.hidden && volver()); return; }
+    if (e.target === document.body && e.key === " ") { e.preventDefault(); alternar(); return; }
+    if (lectura.hidden) return;
+    if (e.key === "ArrowLeft") ir(cargado - 1, !pista.paused);
+    if (e.key === "ArrowRight") ir(cargado + 1, !pista.paused);
+  });
+  window.addEventListener("hashchange", () => {
+    const m = location.hash.match(/^#cancion-(\d+)$/);
+    m ? abrir(Number(m[1]) - 1, true) : mostrarLista();
+  });
+
+  /* ---------- Inicio: listado ---------- */
+  mostrarLista();
+  const m = location.hash.match(/^#cancion-(\d+)$/);
+  if (m) abrir(Number(m[1]) - 1, true);
+})();
+</script>
+</body>
+</html>
